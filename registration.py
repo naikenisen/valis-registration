@@ -15,12 +15,7 @@ for hes_path in hes_slides:
     
     # Construire le chemin du fichier CD30 attendu pour cette paire
     cd30_path = os.path.join(slide_src_dir, f"{prefix}_CD30.svs")
-    
-    # Vérifier que le fichier CD30 existe bien
-    if not os.path.exists(cd30_path):
-        print(f"⚠️ Attention: {cd30_path} introuvable pour {filename}. On passe.")
-        continue
-        
+
     print(f"\n--- Alignement de la paire : {prefix} ---")
     
     # 2. Créer un sous-dossier de résultats spécifique pour cette paire
@@ -43,4 +38,4 @@ for hes_path in hes_slides:
     # registered_slide_dst_dir = os.path.join(pair_results_dir, "registered_slides")
     # registrar.warp_and_save_slides(registered_slide_dst_dir)
 
-print("\n✅ Traitement terminé !")
+print("\n Traitement terminé !")
