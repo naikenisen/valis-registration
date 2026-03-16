@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Convert .svs whole-slide images to .ome.tiff.
 
-Usage example:
-	python svs-ome-tiff.py \
-		--input-dir ~/coding/silver/slides \
-		--output-dir ~/coding/silver/slides_ome_tiff
+nohup python -u svs-ome-tiff.py --input-dir ~/silver/ube/slides --output-dir ~/silver/ube/slides_ome_tiff > conversion.log 2>&1 &
 """
 
 from __future__ import annotations
@@ -23,13 +20,13 @@ def parse_args() -> argparse.Namespace:
 	)
 	parser.add_argument(
 		"--input-dir",
-		default="~/coding/silver/slides",
-		help="Directory containing .svs files (default: ~/coding/silver/slides)",
+		default="~/silver/ube/slides",
+		help="Directory containing .svs files (default: ~/silver/ube/slides)",
 	)
 	parser.add_argument(
 		"--output-dir",
-		default="~/coding/silver/ome_tiff",
-		help="Directory where .ome.tiff files are written (default: ~/coding/silver/ome_tiff)",
+		default="~/silver/ube/slides_ome_tiff",
+		help="Directory where .ome.tiff files are written (default: ~/silver/ube/slides_ome_tiff)",
 	)
 	parser.add_argument(
 		"--compression",
@@ -122,6 +119,12 @@ def remove_orphan_outputs(output_dir: str) -> int:
 
 
 def main() -> int:
+	# Ensure progress logs appear immediately when stdout/stderr are redirected.
+	if hasattr(sys.stdout, "reconfigure"):
+		sys.stdout.reconfigure(line_buffering=True)
+	if hasattr(sys.stderr, "reconfigure"):
+		sys.stderr.reconfigure(line_buffering=True)
+
 	args = parse_args()
 
 	input_dir = os.path.expanduser(args.input_dir)
