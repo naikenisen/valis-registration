@@ -3,7 +3,7 @@ import os
 import glob
 
 slide_src_dir = os.path.expanduser("~/coding/silver/slides")
-base_results_dst_dir = "./slide_registration_example"
+base_results_dst_dir = os.path.expanduser("~/coding/silver/registration_results")
 
 # 1. Lister toutes les lames HES pour identifier les préfixes (a, b, c...)
 hes_slides = glob.glob(os.path.join(slide_src_dir, "*_HES.svs"))
