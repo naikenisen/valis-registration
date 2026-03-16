@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert .svs whole-slide images to .ome.tiff.
 
-nohup python -u svs-ome-tiff.py --input-dir ~/silver/ube/slides --output-dir ~/silver/ube/slides_ome_tiff > conversion.log 2>&1 &
+nohup python -u svs-ome-tiff.py --input-dir /silver/ube/slides --output-dir /silver/ube/slides_ome_tiff > conversion.log 2>&1 &
 """
 
 from __future__ import annotations
@@ -20,13 +20,13 @@ def parse_args() -> argparse.Namespace:
 	)
 	parser.add_argument(
 		"--input-dir",
-		default="~/silver/ube/slides",
-		help="Directory containing .svs files (default: ~/silver/ube/slides)",
+		default="/silver/ube/slides",
+		help="Directory containing .svs files (default: /silver/ube/slides)",
 	)
 	parser.add_argument(
 		"--output-dir",
-		default="~/silver/ube/slides_ome_tiff",
-		help="Directory where .ome.tiff files are written (default: ~/silver/ube/slides_ome_tiff)",
+		default="/silver/ube/slides_ome_tiff",
+		help="Directory where .ome.tiff files are written (default: /silver/ube/slides_ome_tiff)",
 	)
 	parser.add_argument(
 		"--compression",
@@ -141,6 +141,18 @@ def main() -> int:
 	svs_files = sorted(glob.glob(os.path.join(input_dir, "*.svs")))
 	if not svs_files:
 		print(f"No .svs files found in: {input_dir}")
+		candidates = [
+			"/silver/ube/slides",
+			"/data/silver/ube/slides",
+			os.path.expanduser("~/silver/ube/slides"),
+		]
+		print("Checked input directory only; try one of these if applicable:")
+		for candidate in candidates:
+			if os.path.isdir(candidate):
+				count = len(glob.glob(os.path.join(candidate, "*.svs")))
+				print(f"  - {candidate} (exists, {count} .svs file(s))")
+			else:
+				print(f"  - {candidate} (not found)")
 		return 1
 
 	print(f"Found {len(svs_files)} SVS file(s) in {input_dir}")
