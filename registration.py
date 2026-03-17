@@ -9,6 +9,9 @@ import argparse
 import glob
 import os
 
+# Force CPU to avoid VALIS/LightGlue CUDA tensor->NumPy conversion errors.
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+
 from valis import registration
 
 SUPPORTED_EXTENSION = ".ome.tiff"
@@ -53,43 +56,55 @@ def main():
 
     os.makedirs(base_results_dst_dir, exist_ok=True)
 
-    hes_slides = find_hes_slides(slide_src_dir)
-    if not hes_slides:
-        print(
-            f"No HES slides found in {slide_src_dir} for extension: {SUPPORTED_EXTENSION}"
-        )
-        return
+    try:
+        hes_slides = find_hes_slides(slide_src_dir)
+        if not hes_slides:
+            print(
+                f"No HES slides found in {slide_src_dir} for extension: {SUPPORTED_EXTENSION}"
+            )
+            return
 
-    for hes_path in hes_slides:
-        filename = os.path.basename(hes_path)
-        prefix = filename.rsplit("_HES", 1)[0]
+        for hes_path in hes_slides:
+            filename = os.path.basename(hes_path)
+            prefix = filename.rsplit("_HES", 1)[0]
 
-        cd30_path = find_cd30_slide(slide_src_dir, prefix)
+            cd30_path = find_cd30_slide(slide_src_dir, prefix)
 
-        if cd30_path is None:
-            print(f"Missing CD30 slide for {prefix}. Skipped.")
-            continue
+            if cd30_path is None:
+                print(f"Missing CD30 slide for {prefix}. Skipped.")
+                continue
 
-        print(f"\n--- Aligning pair: {prefix} ---")
+            print(f"\n--- Aligning pair: {prefix} ---")
 
-        pair_results_dir = os.path.join(base_results_dst_dir, prefix)
-        img_list = [hes_path, cd30_path]
+            pair_results_dir = os.path.join(base_results_dst_dir, prefix)
+            img_list = [hes_path, cd30_path]
 
-        registrar = registration.Valis(
-            src_dir=slide_src_dir,
-            dst_dir=pair_results_dir,
-            img_list=img_list,
-            reference_img_f=hes_path,
-        )
+            registrar = registration.Valis(
+                src_dir=slide_src_dir,
+                dst_dir=pair_results_dir,
+                img_list=img_list,
+                reference_img_f=hes_path,
+            )
 
-        registrar.register()
+            rigid_registrar, _, _ = registrar.register()
 
-        registered_slide_dst_dir = os.path.join(pair_results_dir, "registered_slides")
-        registrar.warp_and_save_slides(registered_slide_dst_dir)
+            if rigid_registrar is None:
+                print(f"Registration failed for {prefix}. Skipped.")
+                continue
 
-        print(f"Pair {prefix} completed successfully.")
+            try:
+                registered_slide_dst_dir = os.path.join(pair_results_dir, "registered_slides")
+                registrar.warp_and_save_slides(registered_slide_dst_dir)
+            except Exception as exc:
+                print(f"Warp/save failed for {prefix}: {exc}")
+                continue
 
-    print("\nTotal processing completed.")
+            print(f"Pair {prefix} completed successfully.")
+
+        print("\nTotal processing completed.")
+    finally:
+        # Ensure Bio-Formats JVM is terminated cleanly.
+        registration.kill_jvm()
 
 
 if __name__ == "__main__":
