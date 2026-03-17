@@ -6,7 +6,7 @@ import os
 # Force CPU to avoid VALIS/LightGlue CUDA tensor->NumPy conversion errors.
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 import numpy as np
-from valis import registration
+from valis import registration, affine_optimizer
 from valis.micro_rigid_registrar import MicroRigidRegistrar
 
 # gestion des chemins
@@ -25,10 +25,12 @@ registrar = registration.Valis(
     dst_dir=pair_results_dir,
     img_list=img_list,
     reference_img_f=hes_path,
-    max_processed_image_dim_px = 2000,
-    align_to_reference = True,
+    max_processed_image_dim_px=2000,
+    align_to_reference=True,
     max_non_rigid_registration_dim_px=2048,
     micro_rigid_registrar_cls=MicroRigidRegistrar,
+    affine_optimizer_cls=affine_optimizer.AffineOptimizerMattesMI,
+    denoise_rigid=True,
 )
 
 print(f"Aligning pair")
