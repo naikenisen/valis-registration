@@ -23,7 +23,9 @@ registrar = registration.Valis(
     dst_dir=pair_results_dir,
     img_list=img_list,
     reference_img_f=hes_path,
-    max_processed_image_dim_px = 1600,
+    max_processed_image_dim_px = 2000,
+    align_to_reference = True,
+    max_non_rigid_registration_dim_px=2048
 )
 
 print(f"Aligning pair")
