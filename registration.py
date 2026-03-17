@@ -54,7 +54,6 @@ def main():
         )
 
         rigid_registrar, _, _ = registrar.register(
-            align_to_reference=True,
             max_non_rigid_registration_dim_px=MAX_NON_RIGID_REGISTRATION_DIM_PX,
         )
 
