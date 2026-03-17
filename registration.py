@@ -1,7 +1,7 @@
 """registration.py
 nohup python registration.py --input-dir /silver/ube/slides_ome_tiff \
     --output-dir /silver/ube/registration_results
-     > conversion.log 2>&1 &
+     > registration.log 2>&1 &
 """
 
 
