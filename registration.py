@@ -1,12 +1,7 @@
 """registration.py
-nohup python registration.py \
-    --input-dir /silver/ube/slides_ome_tiff \
-    --output-dir /silver/ube/registration_results \
-    > registration.log 2>&1 &
+nohup python registration.py > registration.log 2>&1 &
 """
 
-import argparse
-import glob
 import os
 
 # Force CPU to avoid VALIS/LightGlue CUDA tensor->NumPy conversion errors.
@@ -14,94 +9,53 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
 from valis import registration
 
-SUPPORTED_EXTENSION = ".ome.tiff"
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Register HES/CD30 slide pairs with VALIS"
-    )
-    parser.add_argument(
-        "--input-dir",
-        required=True,
-        help="Directory containing slides named like <prefix>_HES and <prefix>_CD30",
-    )
-    parser.add_argument(
-        "--output-dir",
-        required=True,
-        help="Directory where registration results are written",
-    )
-    return parser.parse_args()
-
-
-def find_hes_slides(slide_src_dir):
-    return sorted(
-        glob.glob(os.path.join(slide_src_dir, f"*_HES{SUPPORTED_EXTENSION}"))
-    )
-
-
-def find_cd30_slide(slide_src_dir, prefix):
-    candidate = os.path.join(slide_src_dir, f"{prefix}_CD30{SUPPORTED_EXTENSION}")
-    return candidate if os.path.exists(candidate) else None
+# Hardcoded pair to register
+HES_SLIDE_PATH = "/silver/ube/slides_ome_tiff/a_HES.ome.tiff"
+CD30_SLIDE_PATH = "/silver/ube/slides_ome_tiff/a_CD30.ome.tiff"
+OUTPUT_DIR = "/silver/ube/registration_results_v2"
 
 
 def main():
-    args = parse_args()
+    hes_path = os.path.expanduser(HES_SLIDE_PATH)
+    cd30_path = os.path.expanduser(CD30_SLIDE_PATH)
+    base_results_dst_dir = os.path.expanduser(OUTPUT_DIR)
 
-    slide_src_dir = os.path.expanduser(args.input_dir)
-    base_results_dst_dir = os.path.expanduser(args.output_dir)
+    if not os.path.isfile(hes_path):
+        raise FileNotFoundError(f"HES slide not found: {hes_path}")
 
-    if not os.path.isdir(slide_src_dir):
-        raise FileNotFoundError(f"Input directory not found: {slide_src_dir}")
+    if not os.path.isfile(cd30_path):
+        raise FileNotFoundError(f"CD30 slide not found: {cd30_path}")
 
     os.makedirs(base_results_dst_dir, exist_ok=True)
 
+    filename = os.path.basename(hes_path)
+    prefix = filename.rsplit("_HES", 1)[0]
+    pair_results_dir = os.path.join(base_results_dst_dir, prefix)
+
+    # Use parent folder of the input slides as VALIS source directory.
+    slide_src_dir = os.path.dirname(hes_path)
+    img_list = [hes_path, cd30_path]
+
     try:
-        hes_slides = find_hes_slides(slide_src_dir)
-        if not hes_slides:
-            print(
-                f"No HES slides found in {slide_src_dir} for extension: {SUPPORTED_EXTENSION}"
-            )
+        print(f"\n--- Aligning pair: {prefix} ---")
+
+        registrar = registration.Valis(
+            src_dir=slide_src_dir,
+            dst_dir=pair_results_dir,
+            img_list=img_list,
+            reference_img_f=hes_path,
+        )
+
+        rigid_registrar, _, _ = registrar.register()
+
+        if rigid_registrar is None:
+            print(f"Registration failed for {prefix}.")
             return
 
-        for hes_path in hes_slides:
-            filename = os.path.basename(hes_path)
-            prefix = filename.rsplit("_HES", 1)[0]
+        registered_slide_dst_dir = os.path.join(pair_results_dir, "registered_slides")
+        registrar.warp_and_save_slides(registered_slide_dst_dir)
 
-            cd30_path = find_cd30_slide(slide_src_dir, prefix)
-
-            if cd30_path is None:
-                print(f"Missing CD30 slide for {prefix}. Skipped.")
-                continue
-
-            print(f"\n--- Aligning pair: {prefix} ---")
-
-            pair_results_dir = os.path.join(base_results_dst_dir, prefix)
-            img_list = [hes_path, cd30_path]
-
-            registrar = registration.Valis(
-                src_dir=slide_src_dir,
-                dst_dir=pair_results_dir,
-                img_list=img_list,
-                reference_img_f=hes_path,
-            )
-
-            rigid_registrar, _, _ = registrar.register()
-
-            if rigid_registrar is None:
-                print(f"Registration failed for {prefix}. Skipped.")
-                continue
-
-            try:
-                registered_slide_dst_dir = os.path.join(pair_results_dir, "registered_slides")
-                registrar.warp_and_save_slides(registered_slide_dst_dir)
-            except Exception as exc:
-                print(f"Warp/save failed for {prefix}: {exc}")
-                continue
-
-            print(f"Pair {prefix} completed successfully.")
-
-        print("\nTotal processing completed.")
+        print(f"Pair {prefix} completed successfully.")
     finally:
         # Ensure Bio-Formats JVM is terminated cleanly.
         registration.kill_jvm()
