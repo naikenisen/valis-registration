@@ -14,6 +14,12 @@ HES_SLIDE_PATH = "/silver/ube/slides_ome_tiff/a_HES.ome.tiff"
 CD30_SLIDE_PATH = "/silver/ube/slides_ome_tiff/a_CD30.ome.tiff"
 OUTPUT_DIR = "/silver/ube/registration_results_v2"
 
+# Registration quality knobs (adjust if alignment is poor)
+# 500-2000 is usually a good range. Larger values help when there is a lot of empty space.
+MAX_PROCESSED_IMAGE_DIM_PX = 1600
+# Improve local details after rigid step using larger images for non-rigid stage.
+MAX_NON_RIGID_REGISTRATION_DIM_PX = 3000
+
 
 def main():
     hes_path = os.path.expanduser(HES_SLIDE_PATH)
@@ -44,9 +50,13 @@ def main():
             dst_dir=pair_results_dir,
             img_list=img_list,
             reference_img_f=hes_path,
+            max_processed_image_dim_px=MAX_PROCESSED_IMAGE_DIM_PX,
         )
 
-        rigid_registrar, _, _ = registrar.register()
+        rigid_registrar, _, _ = registrar.register(
+            align_to_reference=True,
+            max_non_rigid_registration_dim_px=MAX_NON_RIGID_REGISTRATION_DIM_PX,
+        )
 
         if rigid_registrar is None:
             print(f"Registration failed for {prefix}.")
